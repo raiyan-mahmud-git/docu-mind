@@ -47,6 +47,13 @@ def test_api_upload_search_list_delete_flow(tmp_path: Path) -> None:
     app = create_app(settings, runtime_factory=lambda: _runtime(settings))
 
     with TestClient(app) as client:
+        page = client.get("/")
+        assert page.status_code == 200
+        assert "Your documents" in page.text
+        assert client.get("/static/style.css").status_code == 200
+        assert client.get("/static/app.js").status_code == 200
+        assert client.get("/static/favicon.svg").status_code == 200
+
         assert client.get("/health").json() == {"status": "ok"}
 
         upload = client.post(

@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from documind.api.routes import router
 from documind.config import Settings
@@ -42,8 +45,17 @@ def create_app(
     app.state.settings = active_settings
     app.state.runtime_factory = runtime_factory or default_factory
     app.include_router(router)
+
+    web_dir = Path(__file__).resolve().parents[3] / "web"
+    if web_dir.is_dir():
+        app.mount("/static", StaticFiles(directory=web_dir), name="static")
+        app.add_api_route(
+            "/",
+            lambda: FileResponse(web_dir / "index.html"),
+            methods=["GET"],
+            include_in_schema=False,
+        )
     return app
 
 
 app = create_app()
-
