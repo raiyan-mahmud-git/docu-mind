@@ -8,6 +8,8 @@ from documind.config import Settings
 from documind.db import DocumentRegistry
 from documind.embeddings import get_embedder
 from documind.ingest import IngestionPipeline
+from documind.llm import create_llm_provider
+from documind.qa import QAService
 from documind.retrieval import Retriever
 from documind.vectorstore import ChromaVectorStore
 
@@ -20,9 +22,11 @@ class Runtime:
     vector_store: ChromaVectorStore
     ingestor: IngestionPipeline
     retriever: Retriever
+    qa: QAService
 
     def close(self) -> None:
-        """Release the persistent vector database connection."""
+        """Release persistent vector and language-model connections."""
+        self.qa.close()
         self.vector_store.close()
 
 
@@ -32,6 +36,7 @@ def create_runtime(settings: Settings | None = None) -> Runtime:
     registry = DocumentRegistry(active_settings.sqlite_path)
     vector_store = ChromaVectorStore(active_settings.chroma_dir)
     embedder = get_embedder(active_settings.embedding_model)
+    retriever = Retriever(vector_store, embedder, active_settings.score_threshold)
     return Runtime(
         registry=registry,
         vector_store=vector_store,
@@ -42,5 +47,6 @@ def create_runtime(settings: Settings | None = None) -> Runtime:
             chunk_size=active_settings.chunk_size,
             chunk_overlap=active_settings.chunk_overlap,
         ),
-        retriever=Retriever(vector_store, embedder, active_settings.score_threshold),
+        retriever=retriever,
+        qa=QAService(retriever, create_llm_provider(active_settings)),
     )

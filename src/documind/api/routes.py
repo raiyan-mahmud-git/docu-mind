@@ -14,6 +14,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from starlette.concurrency import run_in_threadpool
 
 from documind.api.schemas import (
+    AnswerResponse,
+    AskRequest,
     DocumentResponse,
     HealthResponse,
     PassageResponse,
@@ -141,3 +143,25 @@ def search_documents(
 
 
 
+
+
+@router.post("/ask", response_model=AnswerResponse)
+def ask_documents(
+    payload: AskRequest,
+    runtime: Runtime = Depends(get_runtime),
+    settings: Settings = Depends(get_settings),
+) -> AnswerResponse:
+    """Answer from retrieved passages, optionally through the configured LLM."""
+    if not payload.query.strip():
+        raise HTTPException(status_code=422, detail="Query must not be empty")
+    try:
+        answer = runtime.qa.ask(
+            payload.query,
+            payload.top_k or settings.top_k,
+            use_llm=payload.use_llm,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return AnswerResponse.from_answer(answer)

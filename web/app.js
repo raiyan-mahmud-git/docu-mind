@@ -15,6 +15,7 @@ const topKInput = document.querySelector("#top-k");
 const searchButton = document.querySelector("#search-button");
 const searchStatus = document.querySelector("#search-status");
 const searchResults = document.querySelector("#search-results");
+const askModeInput = document.querySelector("#ask-mode");
 
 function showUploadError(message) {
   uploadError.textContent = message;
@@ -184,11 +185,12 @@ async function removeDocument(item, button) {
 
 document.querySelector("#refresh-button").addEventListener("click", refreshDocuments);
 
-function renderResults(results) {
-  searchResults.replaceChildren();
-  for (const result of results) {
+function renderResults(results, append = false) {
+  if (!append) searchResults.replaceChildren();
+  results.forEach((result, index) => {
     const card = document.createElement("article");
     card.className = "result-card";
+    card.dataset.sourceIndex = String(index + 1);
     const topLine = document.createElement("div");
     topLine.className = "result-topline";
 
@@ -196,7 +198,7 @@ function renderResults(results) {
     source.className = "result-source";
     source.innerHTML = '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 2.5h5l4 4v7h-9v-11Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M8.5 2.5v4h4" stroke="currentColor" stroke-width="1.2"/></svg>';
     const citation = document.createElement("span");
-    citation.textContent = `${result.filename} · page ${result.page_number}`;
+    citation.textContent = `[${index + 1}] ${result.filename} · page ${result.page_number}`;
     source.append(citation);
 
     const score = document.createElement("span");
@@ -209,6 +211,57 @@ function renderResults(results) {
     passage.textContent = result.text;
     card.append(topLine, passage);
     searchResults.append(card);
+  });
+}
+
+function highlightSource(index) {
+  const source = searchResults.querySelector(`[data-source-index="${index}"]`);
+  if (!source) return;
+  source.scrollIntoView({ behavior: "smooth", block: "center" });
+  source.classList.add("source-highlight");
+  window.setTimeout(() => source.classList.remove("source-highlight"), 1800);
+}
+
+function renderAnswer(payload) {
+  searchResults.replaceChildren();
+  const answerCard = document.createElement("article");
+  answerCard.className = "answer-card";
+  const heading = document.createElement("h3");
+  heading.className = "answer-heading";
+  heading.textContent = "Answer";
+  const answerText = document.createElement("p");
+  answerText.className = "answer-text";
+
+  const citationPattern = /\[(\d+)\]/g;
+  let previous = 0;
+  for (const match of payload.answer.matchAll(citationPattern)) {
+    const start = match.index;
+    const end = start + match[0].length;
+    answerText.append(document.createTextNode(payload.answer.slice(previous, start)));
+    const sourceIndex = Number(match[1]);
+    if (sourceIndex > 0 && sourceIndex <= payload.sources.length) {
+      const citation = document.createElement("button");
+      citation.className = "answer-citation";
+      citation.type = "button";
+      citation.textContent = match[0];
+      citation.setAttribute("aria-label", `Show source ${sourceIndex}`);
+      citation.addEventListener("click", () => highlightSource(sourceIndex));
+      answerText.append(citation);
+    } else {
+      answerText.append(document.createTextNode(match[0]));
+    }
+    previous = end;
+  }
+  answerText.append(document.createTextNode(payload.answer.slice(previous)));
+  answerCard.append(heading, answerText);
+  searchResults.append(answerCard);
+
+  if (payload.sources.length) {
+    const sourcesHeading = document.createElement("h3");
+    sourcesHeading.className = "sources-heading";
+    sourcesHeading.textContent = "Sources";
+    searchResults.append(sourcesHeading);
+    renderResults(payload.sources, true);
   }
 }
 
@@ -221,17 +274,23 @@ searchForm.addEventListener("submit", async (event) => {
   }
 
   searchButton.disabled = true;
-  searchStatus.textContent = "Searching your passages…";
+  searchStatus.textContent = askModeInput.checked ? "Preparing a grounded answer…" : "Searching your passages…";
   searchResults.replaceChildren();
+  const useLlm = askModeInput.checked;
   try {
-    const response = await fetch("/search", {
+    const response = await fetch(useLlm ? "/ask" : "/search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, top_k: Number(topKInput.value) }),
+      body: JSON.stringify({ query, top_k: Number(topKInput.value), use_llm: useLlm }),
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || "Search failed.");
-    if (payload.no_relevant_passage) {
+    if (useLlm) {
+      renderAnswer(payload);
+      searchStatus.textContent = payload.refused
+        ? "No relevant passage found in the indexed documents."
+        : `Answer generated from ${payload.sources.length} ${payload.sources.length === 1 ? "source" : "sources"}${payload.model_name ? ` · ${payload.model_name}` : ""}.`;
+    } else if (payload.no_relevant_passage) {
       searchStatus.textContent = "";
       const empty = document.createElement("div");
       empty.className = "no-results";
@@ -249,5 +308,3 @@ searchForm.addEventListener("submit", async (event) => {
 });
 
 refreshDocuments();
-
-

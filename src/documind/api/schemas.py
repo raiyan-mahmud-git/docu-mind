@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from documind.models import Chunk, Document, SearchResult
+from documind.models import Answer, Chunk, Document, SearchResult
 
 
 class HealthResponse(BaseModel):
@@ -36,6 +36,12 @@ class SearchRequest(BaseModel):
 
     query: str = Field(min_length=1, max_length=4000)
     top_k: int | None = Field(default=None, ge=1, le=100)
+
+
+class AskRequest(SearchRequest):
+    """Question input with optional grounded answer generation."""
+
+    use_llm: bool = False
 
 
 class PassageResponse(BaseModel):
@@ -70,5 +76,20 @@ class SearchResponse(BaseModel):
     no_relevant_passage: bool
 
 
+class AnswerResponse(BaseModel):
+    """Grounded or retrieval-only answer with its source passages."""
 
+    answer: str
+    sources: list[PassageResponse]
+    model_name: str | None
+    refused: bool
 
+    @classmethod
+    def from_answer(cls, answer: Answer) -> AnswerResponse:
+        """Convert the internal answer and sources to the API response."""
+        return cls(
+            answer=answer.text,
+            sources=[PassageResponse.from_result(source) for source in answer.sources],
+            model_name=answer.model_name,
+            refused=answer.refused,
+        )

@@ -702,8 +702,10 @@ source = { editable = "." }
 dependencies = [
     { name = "chromadb" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "pydantic" },
     { name = "pymupdf" },
+    { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "sentence-transformers" },
     { name = "typer" },
@@ -721,10 +723,12 @@ dev = [
 requires-dist = [
     { name = "chromadb", specifier = ">=1.5.9" },
     { name = "fastapi", specifier = ">=0.162.0" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.11" },
     { name = "pydantic", specifier = ">=2.8" },
     { name = "pymupdf", specifier = ">=1.24" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "python-dotenv", specifier = ">=1.2.4" },
     { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
     { name = "sentence-transformers", specifier = ">=6.2.0" },

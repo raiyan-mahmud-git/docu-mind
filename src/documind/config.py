@@ -6,6 +6,10 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 def _env_int(name: str, default: int) -> int:
     """Read an integer setting and give a clear error for invalid values."""
@@ -43,11 +47,20 @@ class Settings:
     top_k: int
     score_threshold: float
     max_upload_mb: int
+    llm_provider: str
+    ollama_url: str
+    ollama_model: str
+    anthropic_api_key: str | None
+    anthropic_model: str
+    anthropic_api_version: str
+    llm_timeout_seconds: float
+    llm_max_tokens: int
 
     @classmethod
     def from_env(cls) -> Settings:
         """Build settings from environment variables with local data defaults."""
         data_dir = Path(os.getenv("DOCUMIND_DATA_DIR", "data"))
+        api_key = os.getenv("ANTHROPIC_API_KEY")
         return cls(
             data_dir=data_dir,
             upload_dir=Path(os.getenv("DOCUMIND_UPLOAD_DIR", str(data_dir / "uploads"))),
@@ -59,6 +72,14 @@ class Settings:
             top_k=_env_int("DOCUMIND_TOP_K", 5),
             score_threshold=_env_float("DOCUMIND_SCORE_THRESHOLD", 0.25),
             max_upload_mb=_env_int("DOCUMIND_MAX_UPLOAD_MB", 25),
+            llm_provider=os.getenv("DOCUMIND_LLM_PROVIDER", "none").strip().lower(),
+            ollama_url=os.getenv("DOCUMIND_OLLAMA_URL", "http://localhost:11434"),
+            ollama_model=os.getenv("DOCUMIND_OLLAMA_MODEL", "gemma4"),
+            anthropic_api_key=api_key.strip() if api_key and api_key.strip() else None,
+            anthropic_model=os.getenv("DOCUMIND_ANTHROPIC_MODEL", "claude-sonnet-5-5"),
+            anthropic_api_version=os.getenv("DOCUMIND_ANTHROPIC_API_VERSION", "2026-10-21"),
+            llm_timeout_seconds=_env_float("DOCUMIND_LLM_TIMEOUT_SECONDS", 120.0),
+            llm_max_tokens=_env_int("DOCUMIND_LLM_MAX_TOKENS", 1024),
         )
 
 

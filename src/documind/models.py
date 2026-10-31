@@ -42,3 +42,13 @@ class Document:
     pages: int
     chunk_count: int
     created_at: str
+
+
+@dataclass(frozen=True)
+class Answer:
+    """Generated or retrieval-only response with cited source passages."""
+
+    text: str
+    sources: list[SearchResult]
+    model_name: str | None
+    refused: bool

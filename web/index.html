@@ -91,6 +91,11 @@
             </select>
             <button id="search-button" class="primary-button" type="submit">Search <span aria-hidden="true">↗</span></button>
           </form>
+          <label class="answer-mode" for="ask-mode">
+            <input id="ask-mode" type="checkbox">
+            <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+            <span class="answer-mode-copy"><strong>Generate a grounded answer</strong><small>Retrieved passages go to the configured provider when enabled.</small></span>
+          </label>
           <p id="search-status" class="search-status" role="status" aria-live="polite"></p>
           <div id="search-results" class="search-results"></div>
         </section>
@@ -100,7 +105,3 @@
     </div>
   </body>
 </html>
-
-
-
-

@@ -90,6 +90,31 @@ def search(
         runtime.close()
 
 
+@app.command()
+def ask(
+    query: Annotated[str, typer.Argument(help="Question to answer from indexed documents")],
+    top_k: Annotated[int | None, typer.Option(min=1, help="Maximum passages to retrieve")] = None,
+    use_llm: Annotated[bool, typer.Option("--llm", help="Generate a grounded LLM answer")] = False,
+) -> None:
+    """Answer from retrieved passages, optionally using the configured LLM."""
+    try:
+        runtime = _make_runtime()
+    except Exception as exc:
+        _fail(str(exc))
+    try:
+        settings = Settings.from_env()
+        answer = runtime.qa.ask(query, top_k or settings.top_k, use_llm=use_llm)
+        typer.echo(answer.text)
+        for index, result in enumerate(answer.sources, start=1):
+            typer.echo(
+                f"[{index}] {result.chunk.filename}, page {result.chunk.page_number} "
+                f"(score {result.score:.3f})"
+            )
+    except (ValueError, RuntimeError) as exc:
+        _fail(str(exc))
+    finally:
+        runtime.close()
+
 @app.command("list")
 def list_documents() -> None:
     """List indexed documents."""
