@@ -15,8 +15,6 @@ uv run mypy
 
 ## Retrieval CLI
 
-Ingest a document, search it, list indexed files, and delete documents by the ID shown by `list`:
-
 ```powershell
 uv run documind ingest path\to\document.pdf
 uv run documind search "What does this document say?"
@@ -24,15 +22,17 @@ uv run documind list
 uv run documind delete <document-id>
 ```
 
-The first real embedding may download the configured model (`all-MiniLM-L6-v2`). The model loads only on the first ingestion or search command that needs it. Results include the passage rank, similarity score, filename, and one-based page number. If the best match is below the configured threshold, search reports that no relevant passage was found.
+The first real embedding may download the configured model (`all-MiniLM-L6-v2`). It loads only when ingestion or search first needs it. Search results show the rank, score, filename, and one-based page number. Results below the configured threshold are omitted.
 
-To try the CLI with the included sample file:
+## REST API
+
+Start the local API and open its interactive documentation at `http://127.0.0.1:8000/docs`:
 
 ```powershell
-uv run documind ingest tests\fixtures\sample.txt
-uv run documind search "How can a river shape a valley?"
-uv run documind list
+uv run uvicorn documind.api.main:app --reload
 ```
+
+The API provides `GET /health`, `POST /documents`, `GET /documents`, `DELETE /documents/{id}`, and `POST /search`. Uploads accept PDF, Markdown, and text files up to `DOCUMIND_MAX_UPLOAD_MB` (25 MB by default). CORS is disabled unless configured in a later phase.
 
 ## Configuration
 
@@ -40,4 +40,4 @@ Settings use environment variables with defaults suitable for local development.
 
 ## Project status
 
-Phase 4: idempotent ingestion, semantic retrieval, and the retrieval-only CLI. See the project brief for the staged roadmap.
+Phase 5: idempotent ingestion, retrieval CLI, and the REST API. See the project brief for the staged roadmap.

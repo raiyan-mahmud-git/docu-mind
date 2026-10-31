@@ -1,1 +1,1 @@
-"""api components."""
+"""DocuMind HTTP API package."""

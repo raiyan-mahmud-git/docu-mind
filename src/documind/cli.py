@@ -3,53 +3,22 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, NoReturn
 
 import typer
 
 from documind.config import Settings
-from documind.db import DocumentRegistry
-from documind.embeddings import get_embedder
-from documind.ingest import IngestionPipeline, delete_document
+from documind.ingest import delete_document
 from documind.models import Document, SearchResult
-from documind.retrieval import Retriever
-from documind.vectorstore import ChromaVectorStore
+from documind.runtime import Runtime, create_runtime
 
 app = typer.Typer(no_args_is_help=True, help="Index local documents and search their passages.")
 
 
-@dataclass
-class Runtime:
-    """Resources shared by one CLI command."""
-
-    registry: DocumentRegistry
-    vector_store: ChromaVectorStore
-    ingestor: IngestionPipeline
-    retriever: Retriever
-
-    def close(self) -> None:
-        self.vector_store.close()
-
-
 def _make_runtime() -> Runtime:
-    settings = Settings.from_env()
-    registry = DocumentRegistry(settings.sqlite_path)
-    vector_store = ChromaVectorStore(settings.chroma_dir)
-    embedder = get_embedder(settings.embedding_model)
-    return Runtime(
-        registry=registry,
-        vector_store=vector_store,
-        ingestor=IngestionPipeline(
-            registry,
-            vector_store,
-            embedder,
-            chunk_size=settings.chunk_size,
-            chunk_overlap=settings.chunk_overlap,
-        ),
-        retriever=Retriever(vector_store, embedder, settings.score_threshold),
-    )
+    """Create a command-scoped runtime; kept separate to simplify CLI tests."""
+    return create_runtime(Settings.from_env())
 
 
 def _document_line(document: Document) -> str:
@@ -72,7 +41,7 @@ def _result_lines(results: list[SearchResult]) -> list[str]:
     return lines
 
 
-def _fail(message: str) -> None:
+def _fail(message: str) -> NoReturn:
     typer.echo(f"Error: {message}", err=True)
     raise typer.Exit(code=1)
 
@@ -88,8 +57,10 @@ def ingest(
         _fail(str(exc))
     try:
         document = runtime.ingestor.ingest_file(path)
-        typer.echo(f"Indexed {document.filename}: {document.pages} pages, "
-                   f"{document.chunk_count} chunks\nID: {document.id}")
+        typer.echo(
+            f"Indexed {document.filename}: {document.pages} pages, "
+            f"{document.chunk_count} chunks\nID: {document.id}"
+        )
     except (OSError, ValueError, RuntimeError) as exc:
         _fail(str(exc))
     finally:
@@ -159,4 +130,3 @@ def main() -> None:
     """Run the CLI entry point."""
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     app()
-

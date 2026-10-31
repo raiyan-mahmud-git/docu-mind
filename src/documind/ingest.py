@@ -66,12 +66,13 @@ class IngestionPipeline:
             "use PDF, MD, or TXT"
         )
 
-    def ingest_file(self, path: str | Path) -> Document:
+    def ingest_file(self, path: str | Path, filename: str | None = None) -> Document:
         """Index one file and deduplicate it by SHA-256 content hash."""
         source = Path(path)
         if not source.is_file():
             raise FileNotFoundError(f"File does not exist: {source}")
 
+        document_filename = filename or source.name
         started = time.monotonic()
         doc_hash = self._sha256(source)
         existing = self.registry.get(doc_hash)
@@ -83,7 +84,7 @@ class IngestionPipeline:
         chunks = chunk_pages(
             pages,
             doc_hash=doc_hash,
-            filename=source.name,
+            filename=document_filename,
             chunk_size=self.chunk_size,
             overlap=self.chunk_overlap,
         )
@@ -91,7 +92,7 @@ class IngestionPipeline:
         self.vector_store.add(chunks, vectors)
         document = self.registry.register(
             doc_id=doc_hash,
-            filename=source.name,
+            filename=document_filename,
             sha256=doc_hash,
             pages=len(pages),
             chunk_count=len(chunks),
@@ -111,4 +112,5 @@ def delete_document(doc_id: str, registry: DocumentRegistry, vector_store: Vecto
     """Remove a document's stored chunks and metadata row."""
     vector_store.delete_by_doc(doc_id)
     return registry.delete(doc_id)
+
 
