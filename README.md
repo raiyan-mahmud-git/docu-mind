@@ -36,6 +36,12 @@ uv run documind delete <document-id>
 
 The first real embedding may download the configured model (`all-MiniLM-L6-v2`). It loads only when ingestion or search first needs it. Vector search omits results below the configured score threshold; hybrid search ranks dense and keyword matches by their fused rank.
 
+## Scanned PDFs and OCR
+
+PDF OCR is enabled by default for pages that contain an image but have very little extractable text. It runs locally through PyMuPDF and Tesseract; it is separate from the optional Ollama or Anthropic answer model. Install Tesseract OCR with the language data you need (English is `eng`), then ingest the PDF again. PyMuPDF's [OCR setup notes](https://pymupdf.readthedocs.io/en/latest/installation.html#enabling-integrated-ocr-support) explain how to install language data and set `DOCUMIND_OCR_TESSDATA` if automatic discovery does not work.
+
+Set `DOCUMIND_OCR_LANGUAGE=eng` for English, or use a `+`-separated language list such as `eng+fra`. To turn OCR off, set `DOCUMIND_OCR_ENABLED=false`. OCR does not send document contents over the network.
+
 ## Hybrid search and evaluation
 
 The default `DOCUMIND_SEARCH_MODE=vector` keeps the semantic-search baseline. Set it to `hybrid` to combine vector and BM25 keyword rankings with Reciprocal Rank Fusion for CLI, API, and Q&A retrieval. The BM25 index refreshes when the stored chunk set changes. To rerank hybrid candidates with a cross-encoder, set `DOCUMIND_RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2`; its model loads on the first search and may download at that point.
@@ -73,4 +79,4 @@ Settings are loaded from environment variables and `.env`. `.env.example` lists 
 
 ## Project status
 
-Phase 8: Recall@k/MRR evaluation, configurable BM25 + vector hybrid retrieval, and optional cross-encoder reranking. See the project brief for the staged roadmap.
+Phase 8: Recall@k/MRR evaluation, configurable BM25 + vector hybrid retrieval, optional cross-encoder reranking, and local OCR support for scanned PDF pages. See the project brief for the staged roadmap.

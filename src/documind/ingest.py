@@ -35,12 +35,18 @@ class IngestionPipeline:
         embedder: Embedder | SentenceTransformerEmbedder,
         chunk_size: int = 800,
         chunk_overlap: int = 150,
+        ocr_enabled: bool = True,
+        ocr_language: str = "eng",
+        ocr_tessdata: Path | None = None,
     ) -> None:
         self.registry = registry
         self.vector_store = vector_store
         self.embedder = embedder
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
+        self.ocr_enabled = ocr_enabled
+        self.ocr_language = ocr_language
+        self.ocr_tessdata = ocr_tessdata
 
     @staticmethod
     def _sha256(path: Path) -> str:
@@ -51,12 +57,16 @@ class IngestionPipeline:
                 digest.update(block)
         return digest.hexdigest()
 
-    @staticmethod
-    def _load(path: Path) -> list[Page]:
+    def _load(self, path: Path) -> list[Page]:
         """Choose a loader based on the supported file extension."""
         suffix = path.suffix.lower()
         if suffix == ".pdf":
-            return load_pdf(path)
+            return load_pdf(
+                path,
+                ocr_enabled=self.ocr_enabled,
+                ocr_language=self.ocr_language,
+                ocr_tessdata=self.ocr_tessdata,
+            )
         if suffix == ".md":
             return load_markdown(path)
         if suffix == ".txt":

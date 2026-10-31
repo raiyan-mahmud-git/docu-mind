@@ -33,6 +33,19 @@ def _env_float(name: str, default: float) -> float:
         raise ValueError(f"{name} must be a number, got {value!r}") from exc
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    """Read a boolean setting without silently accepting typos."""
+    value = os.getenv(name)
+    if value is None:
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be true or false, got {value!r}")
+
+
 @dataclass(frozen=True)
 class Settings:
     """Settings shared by the CLI, API, and document pipeline."""
@@ -49,6 +62,9 @@ class Settings:
     max_upload_mb: int
     search_mode: str
     reranker_model: str | None
+    ocr_enabled: bool
+    ocr_language: str
+    ocr_tessdata: Path | None
     llm_provider: str
     ollama_url: str
     ollama_model: str
@@ -77,6 +93,13 @@ class Settings:
             search_mode=os.getenv("DOCUMIND_SEARCH_MODE", "vector").strip().lower(),
             reranker_model=(
                 os.getenv("DOCUMIND_RERANKER_MODEL", "").strip() or None
+            ),
+            ocr_enabled=_env_bool("DOCUMIND_OCR_ENABLED", True),
+            ocr_language=os.getenv("DOCUMIND_OCR_LANGUAGE", "eng").strip(),
+            ocr_tessdata=(
+                Path(value)
+                if (value := os.getenv("DOCUMIND_OCR_TESSDATA", "").strip())
+                else None
             ),
             llm_provider=os.getenv("DOCUMIND_LLM_PROVIDER", "none").strip().lower(),
             ollama_url=os.getenv("DOCUMIND_OLLAMA_URL", "http://localhost:11434"),

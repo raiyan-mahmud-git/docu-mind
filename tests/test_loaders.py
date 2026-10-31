@@ -72,3 +72,66 @@ def test_pdf_loader_rejects_corrupt_file(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="Could not open PDF"):
         load_pdf(path)
 
+
+def test_pdf_loader_ocr_fallback_preserves_page_number(tmp_path: Path, monkeypatch) -> None:
+    path = tmp_path / "scan.pdf"
+    document = fitz.open()
+    page = document.new_page()
+    image = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 32, 32), 0)
+    image.clear_with(255)
+    page.insert_image(page.rect, stream=image.tobytes("png"))
+    document.save(path)
+    document.close()
+
+    tessdata = tmp_path / "tessdata"
+
+    def fake_ocr(_page, language, dpi, actual_tessdata):
+        assert language == "eng"
+        assert dpi == 300
+        assert actual_tessdata == tessdata
+        return "Text recognized from the scanned page."
+
+    monkeypatch.setattr("documind.loaders.pdf._ocr_page", fake_ocr)
+
+    assert load_pdf(path, ocr_tessdata=tessdata) == [
+        Page("Text recognized from the scanned page.", 1)
+    ]
+
+
+def test_pdf_loader_reports_missing_tesseract_helpfully(tmp_path: Path, monkeypatch) -> None:
+    path = tmp_path / "scan.pdf"
+    document = fitz.open()
+    page = document.new_page()
+    image = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 32, 32), 0)
+    image.clear_with(255)
+    page.insert_image(page.rect, stream=image.tobytes("png"))
+    document.save(path)
+    document.close()
+
+    def missing_ocr(*_args, **_kwargs):
+        raise RuntimeError("Tesseract language data is unavailable")
+
+    monkeypatch.setattr("documind.loaders.pdf._ocr_page", missing_ocr)
+
+    with pytest.raises(ValueError, match="Install Tesseract OCR"):
+        load_pdf(path)
+
+
+def test_pdf_loader_can_disable_ocr(tmp_path: Path, monkeypatch) -> None:
+    path = tmp_path / "scan.pdf"
+    document = fitz.open()
+    page = document.new_page()
+    image = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 32, 32), 0)
+    image.clear_with(255)
+    page.insert_image(page.rect, stream=image.tobytes("png"))
+    document.save(path)
+    document.close()
+
+    def unexpected_ocr(*_args, **_kwargs):
+        raise AssertionError("OCR should be disabled")
+
+    monkeypatch.setattr("documind.loaders.pdf._ocr_page", unexpected_ocr)
+
+    with pytest.raises(ValueError, match="no extractable text"):
+        load_pdf(path, ocr_enabled=False)
+
