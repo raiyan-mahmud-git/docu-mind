@@ -17,14 +17,16 @@ uv run mypy
 
 Settings use environment variables with defaults suitable for local development. Copy `.env.example` to `.env` to record local choices; secrets and `.env` are ignored by Git. The configuration module reads process environment variables directly.
 
-## Loading and chunking
+## Loading, chunking, and vector search
 
-Loaders support searchable text in PDF, Markdown, and UTF-8 plain-text files. PDF page numbers are one-based and remain accurate even when blank pages are skipped. Scanned PDFs without a text layer are not supported. Chunking keeps paragraphs and sentences together when possible, limits chunks by character count, overlaps neighboring chunks, and preserves the source page number.
+Loaders support searchable text in PDF, Markdown, and UTF-8 plain-text files. Page numbers remain attached to every chunk. Chunking prefers paragraph and sentence boundaries, keeps words intact, and overlaps neighboring passages. Sentence-transformers loads lazily when embeddings are first requested. ChromaDB persists those vectors, while SQLite stores one record per document. Scanned PDFs without a text layer are not supported.
 
 ```powershell
-uv run python -c "from documind.chunking import chunk_pages; from documind.loaders import load_pdf; print(chunk_pages(load_pdf('sample.pdf'), 'document-sha256', 'sample.pdf'))"
+uv run python -c "from pathlib import Path; from documind.embeddings import SentenceTransformerEmbedder; from documind.models import Chunk; from documind.vectorstore import ChromaVectorStore; s=ChromaVectorStore(Path('data/chroma')); c=Chunk('demo:0','demo','demo.txt',1,0,'A local vector search demo.'); e=SentenceTransformerEmbedder('all-MiniLM-L6-v2'); s.add([c],e.embed_texts([c.text])); print(s.query(e.embed_texts(['vector search'])[0],1))"
 ```
+
+The first real embedding may download the configured model. Tests use a deterministic stand-in and do not download it.
 
 ## Project status
 
-Phase 2: document loaders and deterministic text chunking. See the project brief for the staged roadmap.
+Phase 3: lazy embeddings, persistent vector storage, and a SQLite document registry. See the project brief for the staged roadmap.

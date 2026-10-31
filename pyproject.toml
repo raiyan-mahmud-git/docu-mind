@@ -9,7 +9,9 @@ description = "A local-first document question-answering system"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "chromadb>=1.5.9",
     "pymupdf>=1.24",
+    "sentence-transformers>=6.2.0",
 ]
 
 [project.optional-dependencies]

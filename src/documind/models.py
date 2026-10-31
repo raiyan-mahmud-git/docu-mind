@@ -1,4 +1,4 @@
-"""Small data models shared by the document pipeline."""
+"""Shared data models used by the document pipeline."""
 
 from dataclasses import dataclass
 
@@ -21,3 +21,24 @@ class Chunk:
     page_number: int
     chunk_index: int
     text: str
+
+
+@dataclass(frozen=True)
+class SearchResult:
+    """A retrieved chunk with normalized similarity and its one-based rank."""
+
+    chunk: Chunk
+    score: float
+    rank: int
+
+
+@dataclass(frozen=True)
+class Document:
+    """A document tracked in the local SQLite registry."""
+
+    id: str
+    filename: str
+    sha256: str
+    pages: int
+    chunk_count: int
+    created_at: str
