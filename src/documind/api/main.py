@@ -12,12 +12,14 @@ from fastapi.staticfiles import StaticFiles
 
 from documind.api.routes import router
 from documind.config import Settings
+from documind.logging_config import configure_logging
 from documind.runtime import Runtime, create_runtime
 
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     """Create one runtime per process and close its persistent store on shutdown."""
+    configure_logging()
     factory: Callable[[], Runtime] = app.state.runtime_factory
     app.state.runtime = factory()
     try:

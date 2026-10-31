@@ -1,0 +1,32 @@
+services:
+  documind:
+    build: .
+    init: true
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file:
+      - .env
+    environment:
+      DOCUMIND_DATA_DIR: /app/data
+      DOCUMIND_UPLOAD_DIR: /app/data/uploads
+      DOCUMIND_CHROMA_DIR: /app/data/chroma
+      DOCUMIND_SQLITE_PATH: /app/data/documind.sqlite3
+      DOCUMIND_OCR_TESSDATA: /usr/share/tesseract-ocr/5/tessdata
+      HF_HOME: /home/documind/.cache/huggingface
+    volumes:
+      - documind-data:/app/data
+      - documind-model-cache:/home/documind/.cache/huggingface
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+volumes:
+  documind-data:
+  documind-model-cache:

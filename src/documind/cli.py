@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import Annotated, NoReturn
 
@@ -10,6 +9,7 @@ import typer
 
 from documind.config import Settings
 from documind.ingest import delete_document
+from documind.logging_config import configure_logging
 from documind.models import Document, SearchResult
 from documind.runtime import Runtime, create_runtime
 
@@ -153,5 +153,5 @@ def delete(
 
 def main() -> None:
     """Run the CLI entry point."""
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    configure_logging()
     app()
