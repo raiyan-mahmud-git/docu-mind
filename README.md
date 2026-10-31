@@ -17,14 +17,14 @@ uv run mypy
 
 Settings use environment variables with defaults suitable for local development. Copy `.env.example` to `.env` to record local choices; secrets and `.env` are ignored by Git. The configuration module reads process environment variables directly.
 
-## Loading a document
+## Loading and chunking
 
-The first loaders support searchable text in PDF, Markdown, and UTF-8 plain-text files. PDF page numbers are one-based and remain accurate even when blank pages are skipped. Scanned PDFs without a text layer are not supported.
+Loaders support searchable text in PDF, Markdown, and UTF-8 plain-text files. PDF page numbers are one-based and remain accurate even when blank pages are skipped. Scanned PDFs without a text layer are not supported. Chunking keeps paragraphs and sentences together when possible, limits chunks by character count, overlaps neighboring chunks, and preserves the source page number.
 
 ```powershell
-uv run python -c "from documind.loaders import load_pdf; print(load_pdf('sample.pdf'))"
+uv run python -c "from documind.chunking import chunk_pages; from documind.loaders import load_pdf; print(chunk_pages(load_pdf('sample.pdf'), 'document-sha256', 'sample.pdf'))"
 ```
 
 ## Project status
 
-Phase 1: PDF, Markdown, and plain-text loaders. See the project brief for the staged roadmap.
+Phase 2: document loaders and deterministic text chunking. See the project brief for the staged roadmap.

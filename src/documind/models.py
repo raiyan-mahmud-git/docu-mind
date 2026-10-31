@@ -9,3 +9,15 @@ class Page:
 
     text: str
     page_number: int
+
+
+@dataclass(frozen=True)
+class Chunk:
+    """A text passage linked to its source document and page."""
+
+    id: str
+    doc_id: str
+    filename: str
+    page_number: int
+    chunk_index: int
+    text: str
