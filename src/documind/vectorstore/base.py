@@ -19,6 +19,10 @@ class VectorStore(ABC):
         """Return the closest chunks ordered by similarity."""
 
     @abstractmethod
+    def all_chunks(self) -> list[Chunk]:
+        """Return every stored chunk in a stable order for lexical indexing."""
+
+    @abstractmethod
     def delete_by_doc(self, doc_id: str) -> None:
         """Delete every chunk belonging to one document."""
 

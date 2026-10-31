@@ -1,0 +1,18 @@
+{"query":"What is the abandoned loop called after a river cuts through the meander neck?","expected_filename":"earth_science.pdf","expected_page":1}
+{"query":"Which fine sediment builds fertile ground when a river overtops its banks?","expected_filename":"earth_science.pdf","expected_page":2}
+{"query":"How can dissolved limestone lead to a circular collapse at the land surface?","expected_filename":"earth_science.pdf","expected_page":3}
+{"query":"What do geologists call the unsorted debris left behind by melting ice?","expected_filename":"earth_science.pdf","expected_page":4}
+{"query":"Which underground layer can be replenished by seepage from rain and snow?","expected_filename":"earth_science.pdf","expected_page":5}
+{"query":"What volcanic hazard is a muddy mixture of water, ash, and rock?","expected_filename":"earth_science.pdf","expected_page":6}
+{"query":"What kind of current is first produced by a photovoltaic cell?","expected_filename":"energy_systems.pdf","expected_page":1}
+{"query":"Which device makes solar electricity usable by typical household appliances?","expected_filename":"energy_systems.pdf","expected_page":2}
+{"query":"What name is given to the sunlight power received over a unit of surface?","expected_filename":"energy_systems.pdf","expected_page":3}
+{"query":"How can a solar installation limit the impact of shade on adjacent panels?","expected_filename":"energy_systems.pdf","expected_page":4}
+{"query":"What does a battery's round-trip efficiency compare?","expected_filename":"energy_systems.pdf","expected_page":5}
+{"query":"How is actual wind farm production compared with its theoretical rated output?","expected_filename":"energy_systems.pdf","expected_page":6}
+{"query":"Which flower structure receives pollen grains from anthers?","expected_filename":"plant_biology.pdf","expected_page":1}
+{"query":"What grows through a flower to carry a male cell toward the ovule?","expected_filename":"plant_biology.pdf","expected_page":2}
+{"query":"Which plant tissue transports sugars made during photosynthesis?","expected_filename":"plant_biology.pdf","expected_page":3}
+{"query":"What leaf cells regulate whether stomata are open or closed?","expected_filename":"plant_biology.pdf","expected_page":4}
+{"query":"How do certain plants concentrate carbon dioxide to reduce photorespiration in heat?","expected_filename":"plant_biology.pdf","expected_page":5}
+{"query":"What processes can carry seeds away from the parent plant?","expected_filename":"plant_biology.pdf","expected_page":6}

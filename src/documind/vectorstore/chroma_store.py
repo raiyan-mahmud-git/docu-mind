@@ -85,6 +85,35 @@ class ChromaVectorStore(VectorStore):
         """Remove all Chroma records with the requested document ID."""
         self._collection.delete(where={"doc_id": doc_id})
 
+    def all_chunks(self) -> list[Chunk]:
+        """Return the stored corpus so a hybrid retriever can build its BM25 index."""
+        result: Any = self._collection.get(include=["documents", "metadatas"])
+        chunks: list[Chunk] = []
+        for chunk_id, text, metadata in zip(
+            result["ids"], result["documents"], result["metadatas"], strict=True
+        ):
+            if text is None or metadata is None:
+                continue
+            chunks.append(
+                Chunk(
+                    id=chunk_id,
+                    doc_id=str(metadata["doc_id"]),
+                    filename=str(metadata["filename"]),
+                    page_number=int(metadata["page_number"]),
+                    chunk_index=int(metadata["chunk_index"]),
+                    text=text,
+                )
+            )
+        return sorted(
+            chunks,
+            key=lambda chunk: (
+                chunk.filename,
+                chunk.page_number,
+                chunk.chunk_index,
+                chunk.id,
+            ),
+        )
+
     def count(self) -> int:
         """Return the current number of records in the collection."""
         return self._collection.count()

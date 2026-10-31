@@ -34,7 +34,30 @@ uv run documind list
 uv run documind delete <document-id>
 ```
 
-The first real embedding may download the configured model (`all-MiniLM-L6-v2`). It loads only when ingestion or search first needs it. Search results below the configured threshold are omitted.
+The first real embedding may download the configured model (`all-MiniLM-L6-v2`). It loads only when ingestion or search first needs it. Vector search omits results below the configured score threshold; hybrid search ranks dense and keyword matches by their fused rank.
+
+## Hybrid search and evaluation
+
+The default `DOCUMIND_SEARCH_MODE=vector` keeps the semantic-search baseline. Set it to `hybrid` to combine vector and BM25 keyword rankings with Reciprocal Rank Fusion for CLI, API, and Q&A retrieval. The BM25 index refreshes when the stored chunk set changes. To rerank hybrid candidates with a cross-encoder, set `DOCUMIND_RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2`; its model loads on the first search and may download at that point.
+
+Run the reproducible evaluation against the bundled multi-page sample PDFs:
+
+```powershell
+uv run python eval/run_eval.py
+uv run python eval/run_eval.py --rerank
+```
+
+The evaluation builds a temporary index, so it does not use or modify `data/`. The optional cross-encoder reranker may download its model the first time. Each question has one expected filename and page; Recall@k reports the fraction with that source in the first *k* results, and MRR averages the reciprocal rank of the first correct source.
+
+Measured on the bundled 18-question sample set:
+
+| Method | Recall@1 | Recall@3 | Recall@5 | MRR |
+| --- | ---: | ---: | ---: | ---: |
+| Vector baseline | 0.944 | 1.000 | 1.000 | 0.972 |
+| Hybrid (BM25 + RRF) | 0.944 | 1.000 | 1.000 | 0.972 |
+| Hybrid + cross-encoder | 1.000 | 1.000 | 1.000 | 1.000 |
+
+This small, hand-written sample set shows no change from hybrid fusion and a one-question improvement from reranking. Treat it as a working example of the evaluation workflow, not evidence that these rankings generalize to a larger document collection.
 
 ## REST API
 
@@ -50,4 +73,4 @@ Settings are loaded from environment variables and `.env`. `.env.example` lists 
 
 ## Project status
 
-Phase 7: optional grounded LLM answers, provider adapters, and clickable source citations. See the project brief for the staged roadmap.
+Phase 8: Recall@k/MRR evaluation, configurable BM25 + vector hybrid retrieval, and optional cross-encoder reranking. See the project brief for the staged roadmap.

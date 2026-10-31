@@ -7,9 +7,11 @@ from dataclasses import dataclass
 from documind.config import Settings
 from documind.db import DocumentRegistry
 from documind.embeddings import get_embedder
+from documind.hybrid import HybridRetriever
 from documind.ingest import IngestionPipeline
 from documind.llm import create_llm_provider
 from documind.qa import QAService
+from documind.reranking import CrossEncoderReranker
 from documind.retrieval import Retriever
 from documind.vectorstore import ChromaVectorStore
 
@@ -36,7 +38,20 @@ def create_runtime(settings: Settings | None = None) -> Runtime:
     registry = DocumentRegistry(active_settings.sqlite_path)
     vector_store = ChromaVectorStore(active_settings.chroma_dir)
     embedder = get_embedder(active_settings.embedding_model)
-    retriever = Retriever(vector_store, embedder, active_settings.score_threshold)
+    if active_settings.search_mode == "vector":
+        retriever: Retriever = Retriever(
+            vector_store, embedder, active_settings.score_threshold
+        )
+    elif active_settings.search_mode == "hybrid":
+        vector_retriever = Retriever(vector_store, embedder, score_threshold=0.0)
+        reranker = (
+            CrossEncoderReranker(active_settings.reranker_model)
+            if active_settings.reranker_model is not None
+            else None
+        )
+        retriever = HybridRetriever(vector_retriever, vector_store, reranker=reranker)
+    else:
+        raise ValueError("DOCUMIND_SEARCH_MODE must be 'vector' or 'hybrid'")
     return Runtime(
         registry=registry,
         vector_store=vector_store,

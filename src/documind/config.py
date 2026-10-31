@@ -47,6 +47,8 @@ class Settings:
     top_k: int
     score_threshold: float
     max_upload_mb: int
+    search_mode: str
+    reranker_model: str | None
     llm_provider: str
     ollama_url: str
     ollama_model: str
@@ -72,6 +74,10 @@ class Settings:
             top_k=_env_int("DOCUMIND_TOP_K", 5),
             score_threshold=_env_float("DOCUMIND_SCORE_THRESHOLD", 0.25),
             max_upload_mb=_env_int("DOCUMIND_MAX_UPLOAD_MB", 25),
+            search_mode=os.getenv("DOCUMIND_SEARCH_MODE", "vector").strip().lower(),
+            reranker_model=(
+                os.getenv("DOCUMIND_RERANKER_MODEL", "").strip() or None
+            ),
             llm_provider=os.getenv("DOCUMIND_LLM_PROVIDER", "none").strip().lower(),
             ollama_url=os.getenv("DOCUMIND_OLLAMA_URL", "http://localhost:11434"),
             ollama_model=os.getenv("DOCUMIND_OLLAMA_MODEL", "gemma4"),
