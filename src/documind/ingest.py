@@ -1,0 +1,114 @@
+"""File-to-vector ingestion pipeline."""
+
+from __future__ import annotations
+
+import hashlib
+import logging
+import time
+from pathlib import Path
+from typing import Protocol
+
+from documind.chunking import chunk_pages
+from documind.db import DocumentRegistry
+from documind.embeddings import SentenceTransformerEmbedder
+from documind.loaders import load_markdown, load_pdf, load_text
+from documind.models import Document, Page
+from documind.vectorstore.base import VectorStore
+
+logger = logging.getLogger(__name__)
+
+
+class Embedder(Protocol):
+    """Small interface needed by ingestion and retrieval."""
+
+    def embed_texts(self, texts: list[str]) -> list[list[float]]:
+        """Return one vector per input string."""
+
+
+class IngestionPipeline:
+    """Load files, create chunks and vectors, then register each document."""
+
+    def __init__(
+        self,
+        registry: DocumentRegistry,
+        vector_store: VectorStore,
+        embedder: Embedder | SentenceTransformerEmbedder,
+        chunk_size: int = 800,
+        chunk_overlap: int = 150,
+    ) -> None:
+        self.registry = registry
+        self.vector_store = vector_store
+        self.embedder = embedder
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+
+    @staticmethod
+    def _sha256(path: Path) -> str:
+        """Hash file contents in blocks so large files need little extra memory."""
+        digest = hashlib.sha256()
+        with path.open("rb") as source:
+            for block in iter(lambda: source.read(1024 * 1024), b""):
+                digest.update(block)
+        return digest.hexdigest()
+
+    @staticmethod
+    def _load(path: Path) -> list[Page]:
+        """Choose a loader based on the supported file extension."""
+        suffix = path.suffix.lower()
+        if suffix == ".pdf":
+            return load_pdf(path)
+        if suffix == ".md":
+            return load_markdown(path)
+        if suffix == ".txt":
+            return load_text(path)
+        raise ValueError(
+            f"Unsupported file type {suffix or '(no extension)'!r}; "
+            "use PDF, MD, or TXT"
+        )
+
+    def ingest_file(self, path: str | Path) -> Document:
+        """Index one file and deduplicate it by SHA-256 content hash."""
+        source = Path(path)
+        if not source.is_file():
+            raise FileNotFoundError(f"File does not exist: {source}")
+
+        started = time.monotonic()
+        doc_hash = self._sha256(source)
+        existing = self.registry.get(doc_hash)
+        if existing is not None:
+            logger.info("Skipping already indexed file %s (sha256=%s)", source.name, doc_hash)
+            return existing
+
+        pages = self._load(source)
+        chunks = chunk_pages(
+            pages,
+            doc_hash=doc_hash,
+            filename=source.name,
+            chunk_size=self.chunk_size,
+            overlap=self.chunk_overlap,
+        )
+        vectors = self.embedder.embed_texts([chunk.text for chunk in chunks])
+        self.vector_store.add(chunks, vectors)
+        document = self.registry.register(
+            doc_id=doc_hash,
+            filename=source.name,
+            sha256=doc_hash,
+            pages=len(pages),
+            chunk_count=len(chunks),
+        )
+        elapsed = time.monotonic() - started
+        logger.info(
+            "Ingested %s: %d pages -> %d chunks in %.2f seconds",
+            source.name,
+            len(pages),
+            len(chunks),
+            elapsed,
+        )
+        return document
+
+
+def delete_document(doc_id: str, registry: DocumentRegistry, vector_store: VectorStore) -> bool:
+    """Remove a document's stored chunks and metadata row."""
+    vector_store.delete_by_doc(doc_id)
+    return registry.delete(doc_id)
+

@@ -12,7 +12,11 @@ dependencies = [
     "chromadb>=1.5.9",
     "pymupdf>=1.24",
     "sentence-transformers>=6.2.0",
+    "typer>=0.27.3",
 ]
+
+[project.scripts]
+documind = "documind.cli:main"
 
 [project.optional-dependencies]
 dev = [
@@ -41,4 +45,6 @@ python_version = "3.11"
 files = ["src/documind"]
 warn_return_any = true
 warn_unused_configs = true
+
+
 

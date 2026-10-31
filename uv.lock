@@ -703,6 +703,7 @@ dependencies = [
     { name = "chromadb" },
     { name = "pymupdf" },
     { name = "sentence-transformers" },
+    { name = "typer" },
 ]
 
 [package.optional-dependencies]
@@ -720,6 +721,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
     { name = "sentence-transformers", specifier = ">=6.2.0" },
+    { name = "typer", specifier = ">=0.27.3" },
 ]
 provides-extras = ["dev"]
 

@@ -1,6 +1,6 @@
 # DocuMind
 
-DocuMind is a local-first document Q&A system. It will load PDFs, Markdown, and text files, retrieve relevant passages with citations, and optionally use an LLM to draft grounded answers.
+DocuMind is a local-first document Q&A system. It loads PDFs, Markdown, and text files, retrieves relevant passages with citations, and will optionally use an LLM to draft grounded answers in a later phase.
 
 ## Development setup
 
@@ -13,20 +13,31 @@ uv run ruff check .
 uv run mypy
 ```
 
-## Configuration
+## Retrieval CLI
 
-Settings use environment variables with defaults suitable for local development. Copy `.env.example` to `.env` to record local choices; secrets and `.env` are ignored by Git. The configuration module reads process environment variables directly.
-
-## Loading, chunking, and vector search
-
-Loaders support searchable text in PDF, Markdown, and UTF-8 plain-text files. Page numbers remain attached to every chunk. Chunking prefers paragraph and sentence boundaries, keeps words intact, and overlaps neighboring passages. Sentence-transformers loads lazily when embeddings are first requested. ChromaDB persists those vectors, while SQLite stores one record per document. Scanned PDFs without a text layer are not supported.
+Ingest a document, search it, list indexed files, and delete documents by the ID shown by `list`:
 
 ```powershell
-uv run python -c "from pathlib import Path; from documind.embeddings import SentenceTransformerEmbedder; from documind.models import Chunk; from documind.vectorstore import ChromaVectorStore; s=ChromaVectorStore(Path('data/chroma')); c=Chunk('demo:0','demo','demo.txt',1,0,'A local vector search demo.'); e=SentenceTransformerEmbedder('all-MiniLM-L6-v2'); s.add([c],e.embed_texts([c.text])); print(s.query(e.embed_texts(['vector search'])[0],1))"
+uv run documind ingest path\to\document.pdf
+uv run documind search "What does this document say?"
+uv run documind list
+uv run documind delete <document-id>
 ```
 
-The first real embedding may download the configured model. Tests use a deterministic stand-in and do not download it.
+The first real embedding may download the configured model (`all-MiniLM-L6-v2`). The model loads only on the first ingestion or search command that needs it. Results include the passage rank, similarity score, filename, and one-based page number. If the best match is below the configured threshold, search reports that no relevant passage was found.
+
+To try the CLI with the included sample file:
+
+```powershell
+uv run documind ingest tests\fixtures\sample.txt
+uv run documind search "How can a river shape a valley?"
+uv run documind list
+```
+
+## Configuration
+
+Settings use environment variables with defaults suitable for local development. `.env.example` lists the supported settings; `.env` and the local `data/` directory are ignored by Git.
 
 ## Project status
 
-Phase 3: lazy embeddings, persistent vector storage, and a SQLite document registry. See the project brief for the staged roadmap.
+Phase 4: idempotent ingestion, semantic retrieval, and the retrieval-only CLI. See the project brief for the staged roadmap.
