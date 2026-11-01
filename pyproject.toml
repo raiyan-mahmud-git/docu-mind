@@ -18,6 +18,7 @@ dependencies = [
     "python-multipart>=0.0.32",
     "rank-bm25>=0.2.2",
     "sentence-transformers>=6.2.0",
+    "torch>=2.7.0",
     "typer>=0.27.3",
     "uvicorn>=0.54.0",
 ]
@@ -34,6 +35,16 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/documind"]
+
+# DocuMind runs CPU-only in the supported local Docker setup. Keep PyTorch's
+# Linux CUDA runtime packages out of the container dependency set.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

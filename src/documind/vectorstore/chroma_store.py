@@ -49,7 +49,7 @@ class ChromaVectorStore(VectorStore):
         """Query Chroma and convert cosine distance to a 0-to-1 similarity."""
         if top_k < 1:
             raise ValueError("top_k must be positive")
-        count = self.count()
+        count = self._collection.count()
         if not embedding or count == 0:
             return []
 

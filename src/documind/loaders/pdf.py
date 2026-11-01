@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
 from pathlib import Path
 
@@ -38,13 +39,14 @@ def _ocr_page(
     language: str,
     dpi: int,
     tessdata: Path | None,
+    full: bool = False,
 ) -> str:
     """OCR page image regions and return their recognized text."""
     tessdata = tessdata or _find_tessdata()
     text_page = pdf_page.get_textpage_ocr(
         language=language,
         dpi=dpi,
-        full=False,
+        full=full,
         tessdata=str(tessdata) if tessdata is not None else None,
     )
     return str(pdf_page.get_text(textpage=text_page))
@@ -109,3 +111,93 @@ def load_pdf(
         suffix = " after OCR" if ocr_enabled else ""
         raise ValueError(f"PDF {source} contains no extractable text{suffix}")
     return pages
+
+
+def _parse_page_selection(selection: str, page_count: int, max_pages: int) -> list[int]:
+    """Parse one-based page numbers and inclusive ranges such as ``1,3-5``."""
+    if not selection.strip():
+        raise ValueError("Enter at least one page number, such as 1 or 2-4")
+
+    selected: list[int] = []
+    for part in selection.split(","):
+        match = re.fullmatch(r"\s*(\d+)\s*(?:-\s*(\d+)\s*)?", part)
+        if match is None:
+            raise ValueError("Use page numbers or ranges separated by commas, such as 1,3-5")
+        start = int(match.group(1))
+        end = int(match.group(2) or start)
+        if start > end:
+            raise ValueError(f"Page range {part.strip()} must go from lower to higher")
+        if start < 1 or end > page_count:
+            raise ValueError(f"Page numbers must be between 1 and {page_count}")
+        selected.extend(range(start, end + 1))
+
+    selected = list(dict.fromkeys(selected))
+    if len(selected) > max_pages:
+        raise ValueError(f"Choose no more than {max_pages} pages per extraction")
+    return selected
+
+
+def extract_pdf_pages(
+    path: str | Path,
+    selection: str,
+    *,
+    ocr_enabled: bool = True,
+    ocr_language: str = "eng",
+    ocr_dpi: int = 300,
+    ocr_tessdata: Path | None = None,
+    max_pages: int = 20,
+) -> tuple[int, list[Page]]:
+    """Extract selectable text or OCR only the pages selected by the user."""
+    if ocr_dpi < 72:
+        raise ValueError("OCR DPI must be at least 72")
+    if not ocr_language.strip():
+        raise ValueError("OCR language must not be empty")
+    if max_pages < 1:
+        raise ValueError("max_pages must be positive")
+
+    source = Path(path)
+    try:
+        document = fitz.open(source)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError(f"Could not open PDF {source}: {exc}") from exc
+
+    if document.is_encrypted:
+        document.close()
+        raise ValueError(f"PDF {source} is password-protected")
+
+    try:
+        selected_pages = _parse_page_selection(selection, len(document), max_pages)
+        extracted: list[Page] = []
+        for page_number in selected_pages:
+            pdf_page = document.load_page(page_number - 1)
+            text = clean_text(pdf_page.get_text())
+            if ocr_enabled and len(text) < _MIN_TEXT_BEFORE_OCR:
+                try:
+                    ocr_text = clean_text(
+                        _ocr_page(
+                            pdf_page,
+                            ocr_language,
+                            ocr_dpi,
+                            ocr_tessdata,
+                            full=True,
+                        )
+                    )
+                    if ocr_text:
+                        text = ocr_text
+                        logger.info(
+                            "OCR extracted copy text from %s page %d",
+                            source.name,
+                            page_number,
+                        )
+                except (OSError, RuntimeError, ValueError) as exc:
+                    raise ValueError(
+                        f"OCR failed for {source} page {page_number}. Install Tesseract "
+                        "and its language data, or set DOCUMIND_OCR_TESSDATA. "
+                        f"Details: {exc}"
+                    ) from exc
+            extracted.append(Page(text=text, page_number=page_number))
+        return len(document), extracted
+    except (RuntimeError, ValueError) as exc:
+        raise ValueError(f"Could not extract selected pages from PDF {source}: {exc}") from exc
+    finally:
+        document.close()

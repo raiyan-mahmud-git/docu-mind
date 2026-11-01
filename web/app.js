@@ -16,6 +16,69 @@ const searchButton = document.querySelector("#search-button");
 const searchStatus = document.querySelector("#search-status");
 const searchResults = document.querySelector("#search-results");
 const askModeInput = document.querySelector("#ask-mode");
+const pdfCopyForm = document.querySelector("#pdf-copy-form");
+const copyPdfInput = document.querySelector("#copy-pdf-input");
+const copyPagesInput = document.querySelector("#copy-pages-input");
+const copyTextButton = document.querySelector("#copy-text-button");
+const copyTextStatus = document.querySelector("#copy-text-status");
+const copyTextResults = document.querySelector("#copy-text-results");
+pdfCopyForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const file = copyPdfInput.files[0];
+  const pages = copyPagesInput.value.trim();
+  if (!file || !pages) return;
+
+  copyTextButton.disabled = true;
+  copyTextButton.textContent = "Reading pages…";
+  copyTextStatus.textContent = "Extracting text locally. Scanned pages may take a little longer…";
+  copyTextResults.replaceChildren();
+  const formData = new FormData();
+  formData.append("file", file, file.name);
+  formData.append("pages", pages);
+  try {
+    const response = await fetch("/extract-text", { method: "POST", body: formData });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "Could not extract text.");
+    copyTextStatus.textContent = `Extracted ${payload.pages.length} ${payload.pages.length === 1 ? "page" : "pages"} from a ${payload.total_pages}-page PDF.`;
+    for (const page of payload.pages) {
+      const card = document.createElement("article");
+      card.className = "ocr-page-card";
+      const heading = document.createElement("div");
+      heading.className = "ocr-page-heading";
+      const title = document.createElement("strong");
+      title.textContent = `Page ${page.page_number}`;
+      const copyButton = document.createElement("button");
+      copyButton.className = "quiet-button";
+      copyButton.type = "button";
+      copyButton.textContent = "Copy text";
+      const textArea = document.createElement("textarea");
+      textArea.className = "ocr-page-text";
+      textArea.setAttribute("aria-label", `Extracted text from page ${page.page_number}`);
+      textArea.readOnly = true;
+      textArea.value = page.text;
+      copyButton.disabled = !page.text;
+      copyButton.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(textArea.value);
+          copyButton.textContent = "Copied";
+          window.setTimeout(() => { copyButton.textContent = "Copy text"; }, 1500);
+        } catch {
+          textArea.focus();
+          textArea.select();
+          copyTextStatus.textContent = "Clipboard access was blocked. The page text is selected; press Ctrl+C to copy.";
+        }
+      });
+      heading.append(title, copyButton);
+      card.append(heading, textArea);
+      copyTextResults.append(card);
+    }
+  } catch (error) {
+    copyTextStatus.textContent = error.message;
+  } finally {
+    copyTextButton.disabled = false;
+    copyTextButton.textContent = "Extract text";
+  }
+});
 
 function showUploadError(message) {
   uploadError.textContent = message;
@@ -69,11 +132,12 @@ async function handleFiles(fileCollection) {
   if (!files.length) return;
 
   showUploadError("");
-  const allowed = /\.(pdf|md|txt)$/i;
+  const imageAllowed = /\.(pdf|png|jpe?g|bmp|tiff?)$/i;
+  const textAllowed = /\.(md|txt)$/i;
   for (let index = 0; index < files.length; index += 1) {
     const file = files[index];
-    if (!allowed.test(file.name)) {
-      showUploadError(`${file.name}: choose a PDF, Markdown, or TXT file.`);
+    if (!imageAllowed.test(file.name) && !textAllowed.test(file.name)) {
+      showUploadError(`${file.name}: choose a PDF, PNG, JPG, BMP, TIFF, Markdown, or TXT file.`);
       continue;
     }
     try {

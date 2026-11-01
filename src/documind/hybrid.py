@@ -7,7 +7,7 @@ from typing import Protocol
 
 from rank_bm25 import BM25Plus  # type: ignore[import-untyped]
 
-from documind.models import Chunk, SearchResult
+from documind.models import SearchResult
 from documind.retrieval import Retriever
 from documind.vectorstore.base import VectorStore
 
@@ -47,22 +47,6 @@ class HybridRetriever(Retriever):
         self.vector_store = vector_store
         self.rrf_constant = rrf_constant
         self.reranker = reranker
-        self._chunks: list[Chunk] = []
-        self._bm25: BM25Plus | None = None
-        self._tokens: list[list[str]] = []
-        self._chunk_ids: tuple[str, ...] = ()
-        self._refresh_index()
-
-    def _refresh_index(self) -> None:
-        self._chunks = self.vector_store.all_chunks()
-        self._chunk_ids = tuple(chunk.id for chunk in self._chunks)
-        self._tokens = [tokenize(chunk.text) for chunk in self._chunks]
-        self._bm25 = BM25Plus(self._tokens) if self._tokens else None
-
-    def _ensure_fresh_index(self) -> None:
-        current_ids = tuple(chunk.id for chunk in self.vector_store.all_chunks())
-        if current_ids != self._chunk_ids:
-            self._refresh_index()
 
     def search(self, query: str, top_k: int = 5) -> list[SearchResult]:
         """Return the top fused results, with one-based ranks and RRF scores."""
@@ -72,31 +56,33 @@ class HybridRetriever(Retriever):
         if top_k < 1:
             raise ValueError("top_k must be positive")
 
-        self._ensure_fresh_index()
-        if not self._chunks:
+        chunks = self.vector_store.all_chunks()
+        if not chunks:
             return []
 
         candidate_count = max(top_k * 3, top_k)
         dense_results = self.vector_retriever.search(cleaned_query, candidate_count)
         fused: dict[str, float] = {}
-        chunk_by_id = {chunk.id: chunk for chunk in self._chunks}
+        chunk_by_id = {chunk.id: chunk for chunk in chunks}
         for rank, result in enumerate(dense_results, start=1):
             fused[result.chunk.id] = fused.get(result.chunk.id, 0.0) + 1 / (
                 self.rrf_constant + rank
             )
 
-        if self._bm25 is not None:
+        tokens = [tokenize(chunk.text) for chunk in chunks]
+        bm25 = BM25Plus(tokens) if tokens else None
+        if bm25 is not None:
             query_tokens = set(tokenize(cleaned_query))
-            scores = self._bm25.get_scores(list(query_tokens))
+            scores = bm25.get_scores(list(query_tokens))
             lexical_order = sorted(
-                range(len(self._chunks)), key=lambda index: (-float(scores[index]), index)
+                range(len(chunks)), key=lambda index: (-float(scores[index]), index)
             )
             lexical_rank = 0
             for index in lexical_order:
-                if query_tokens.isdisjoint(self._tokens[index]):
+                if query_tokens.isdisjoint(tokens[index]):
                     continue
                 lexical_rank += 1
-                chunk_id = self._chunks[index].id
+                chunk_id = chunks[index].id
                 fused[chunk_id] = fused.get(chunk_id, 0.0) + 1 / (
                     self.rrf_constant + lexical_rank
                 )

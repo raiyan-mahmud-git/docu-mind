@@ -1,6 +1,6 @@
 # DocuMind
 
-DocuMind is a local-first document Q&A system. It loads PDFs, Markdown, and text files, retrieves relevant passages with citations, and can optionally draft grounded answers using an LLM.
+DocuMind is a local-first document Q&A system. It loads PDFs, common image files, Markdown, and text files, retrieves relevant passages with citations, and can optionally draft grounded answers using an LLM.
 
 ## Development setup
 
@@ -21,7 +21,7 @@ Start the local API and web interface together, then open `http://127.0.0.1:8000
 uv run uvicorn documind.api.main:app --reload
 ```
 
-Drop in or browse for PDF, Markdown, and text files, then search the library. Turn on **Generate a grounded answer** to use the configured LLM. The selected provider receives the question and retrieved passages. Answers cite numbered source cards; select a citation to highlight its passage. The page adapts to narrow screens and the operating system's light or dark appearance setting. API docs are at `http://127.0.0.1:8000/docs`.
+Drop in or browse for PDF, PNG, JPG, BMP, TIFF, Markdown, and text files, then search your local library. Images are OCRed locally. The **Extract and copy PDF text** tool lets you choose pages (for example, `1, 3-5`) from a PDF on your computer, then copy each page's text separately. Scanned pages use local OCR. The PDF is processed temporarily and is not added to your library; up to 20 pages can be extracted at a time. Turn on **Generate a grounded answer** to use the configured LLM. The selected provider receives the question and retrieved passages. Answers cite numbered source cards; select a citation to highlight its passage. The page adapts to narrow screens and the operating system's light or dark appearance setting. API docs are at `http://127.0.0.1:8000/docs`.
 
 ## Run with Docker Compose
 
@@ -34,7 +34,11 @@ docker compose up --build
 
 Open `http://127.0.0.1:8000`. The first build installs the Python packages and Tesseract; first use also downloads the embedding model. Compose keeps uploaded documents, Chroma data, SQLite metadata, and downloaded embedding models in named volumes so they survive container restarts. Stop the app with `Ctrl+C`; `docker compose down` stops and removes the container while keeping those volumes.
 
-The container listens only on your own computer. Ollama, if selected, runs on Windows outside Docker; set `DOCUMIND_OLLAMA_URL=http://host.docker.internal:11434` in `.env` so the container can reach it. Anthropic remains optional and can incur API charges if enabled.
+The container listens only on your own computer. Ollama, if selected, runs on Windows outside Docker; set `DOCUMIND_OLLAMA_URL=http://host.docker.internal:11434` in `.env` so the container can reach it. Anthropic remains optional and can incur API charges if enabled. The app has no accounts: it is intended for your local use and should not be exposed as a public document service.
+
+## GitHub showcase
+
+The `docs/` folder is a static preview for GitHub Pages. It uses built-in sample text and does not connect to the API or include your private library. Once this project is pushed to a GitHub repository, set **Settings → Pages → Build and deployment → Source** to **GitHub Actions**. The workflow publishes the preview at `https://<owner>.github.io/<repository>/` after a push to `main`. The real app remains local because it has no accounts and is not safe to share as a public service.
 
 Local development without Docker remains available using the `uv` command above.
 
@@ -53,7 +57,7 @@ The first real embedding may download the configured model (`all-MiniLM-L6-v2`).
 
 ## Scanned PDFs and OCR
 
-PDF OCR is enabled by default for pages that contain an image but have very little extractable text. It runs locally through PyMuPDF and Tesseract; it is separate from the optional Ollama or Anthropic answer model. Install Tesseract OCR with the language data you need (English is `eng`), then ingest the PDF again. PyMuPDF's [OCR setup notes](https://pymupdf.readthedocs.io/en/latest/installation.html#enabling-integrated-ocr-support) explain how to install language data and set `DOCUMIND_OCR_TESSDATA` if automatic discovery does not work.
+PDF OCR is enabled by default for pages that contain an image but have very little extractable text. Standalone PNG, JPG/JPEG, BMP, and TIFF images are OCRed as well. OCR runs locally through PyMuPDF and Tesseract; it is separate from the optional Ollama or Anthropic answer model. Install Tesseract OCR with the language data you need (English is `eng`), then ingest the files again. PyMuPDF's [OCR setup notes](https://pymupdf.readthedocs.io/en/latest/installation.html#enabling-integrated-ocr-support) explain how to install language data and set `DOCUMIND_OCR_TESSDATA` if automatic discovery does not work.
 
 Set `DOCUMIND_OCR_LANGUAGE=eng` for English, or use a `+`-separated language list such as `eng+fra`. To turn OCR off, set `DOCUMIND_OCR_ENABLED=false`. OCR does not send document contents over the network.
 
@@ -82,12 +86,13 @@ This small, hand-written sample set shows no change from hybrid fusion and a one
 
 ## REST API
 
-The API provides `GET /health`, `POST /documents`, `GET /documents`, `DELETE /documents/{id}`, `POST /search`, and `POST /ask`. Uploads accept PDF, Markdown, and text files up to `DOCUMIND_MAX_UPLOAD_MB` (25 MB by default). CORS is disabled by default.
+The API provides `GET /health`, `POST /documents`, `POST /extract-text`, `GET /documents`, `DELETE /documents/{id}`, `POST /search`, and `POST /ask`. Uploads accept PDF, PNG, JPG/JPEG, BMP, TIFF, Markdown, and text files up to `DOCUMIND_MAX_UPLOAD_MB` (25 MB by default). CORS is disabled by default. The API has no authentication and is intended to stay on localhost.
 
 PowerShell examples:
 
 ```powershell
-curl.exe -F "file=@C:\docs\notes.pdf" http://127.0.0.1:8000/documents
+Invoke-RestMethod http://127.0.0.1:8000/documents -Method Post `
+  -Form @{ file = Get-Item "C:\docs\notes.pdf" }
 
 $body = @{ query = "What is the main idea?"; top_k = 5 } | ConvertTo-Json
 Invoke-RestMethod http://127.0.0.1:8000/search -Method Post `
@@ -103,8 +108,8 @@ Invoke-RestMethod http://127.0.0.1:8000/ask -Method Post `
 ```mermaid
 flowchart LR
     User[Browser or CLI] --> API[FastAPI]
-    API --> Upload[PDF, Markdown, or text loader]
-    Upload --> OCR[Local OCR for scanned PDF pages]
+    API --> Upload[PDF, image, Markdown, or text loader]
+    Upload --> OCR[Local OCR for scanned PDF pages and images]
     Upload --> Split[Page-aware chunking]
     OCR --> Split
     Split --> Embed[Local sentence embeddings]
@@ -126,12 +131,12 @@ Settings are loaded from environment variables and `.env`. `.env.example` lists 
 
 ## Limitations and next improvements
 
-- OCR runs on image-heavy PDF pages and depends on installed Tesseract language data. The container includes English OCR data; install other language packs to use other languages.
+- OCR runs on image-heavy PDF pages and standalone images, and depends on installed Tesseract language data. The container includes English OCR data; install other language packs to use other languages.
 - Embedding and reranker models run locally and may require significant memory and disk space on first use.
 - The benchmark is small and hand-written; expand it with questions from real, permitted sample documents before drawing conclusions about retrieval quality.
-- There are no user accounts or multi-user data separation. Keep the service bound to localhost unless authentication and access controls are added.
+- The web API does not include authentication. Keep it bound to localhost. The GitHub Pages showcase is a static sample and does not connect to the API or contain personal documents.
 - Future improvements could add document filters, better multilingual OCR, streaming answers, and a larger held-out retrieval evaluation.
 
 ## Project status
 
-Phase 9: container packaging, persistent volumes, structured logs, API examples, architecture notes, and automated quality checks. See the project brief for the staged roadmap.
+Phase 10: local document Q&A, local OCR, and a static GitHub Pages showcase. The showcase uses sample content and does not expose the personal document library.

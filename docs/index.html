@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f7f8f5">
+    <meta name="description" content="A local-first document library with OCR, passage search, and source citations.">
+    <title>DocuMind — documents, within reach</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="showcase.css">
+    <script src="showcase.js" defer></script>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="#top" aria-label="DocuMind home">
+          <span class="brand-mark" aria-hidden="true">D</span>
+          <span>DocuMind</span>
+        </a>
+        <a class="source-link" id="source-link" href="#">View source <span aria-hidden="true">↗</span></a>
+      </header>
+
+      <main id="top">
+        <section class="hero">
+          <p class="eyebrow">A LOCAL-FIRST DOCUMENT LIBRARY</p>
+          <h1>Your documents,<br><span>within reach.</span></h1>
+          <p class="hero-copy">Find the passage you need in your PDFs and notes. DocuMind extracts text, reads scanned pages with OCR, and points back to its sources.</p>
+          <a class="jump-link" href="#preview">Explore the preview <span aria-hidden="true">↓</span></a>
+        </section>
+
+        <section class="preview panel" id="preview" aria-labelledby="preview-title">
+          <div class="preview-heading">
+            <div>
+              <p class="eyebrow">INTERACTIVE PREVIEW · SAMPLE CONTENT</p>
+              <h2 id="preview-title">Find the right passage</h2>
+            </div>
+            <span class="demo-badge"><i></i> Demo library</span>
+          </div>
+          <div class="library-row">
+            <span class="file-mark">PDF</span>
+            <span><strong>climate_notes.pdf</strong><small>12 pages · sample document</small></span>
+            <span class="sample-label">SAMPLE</span>
+          </div>
+          <form id="demo-search" class="search-form">
+            <label class="visually-hidden" for="query">Search sample document</label>
+            <input id="query" type="search" value="What causes coral bleaching?" maxlength="160" required>
+            <button type="submit">Search <span aria-hidden="true">↗</span></button>
+          </form>
+          <div class="suggestions" aria-label="Sample questions">
+            <button type="button" data-query="What causes coral bleaching?">Coral bleaching</button>
+            <button type="button" data-query="How do forests store carbon?">Forest carbon</button>
+            <button type="button" data-query="What happens when sea levels rise?">Rising sea levels</button>
+          </div>
+          <p class="result-count" id="result-count" role="status" aria-live="polite">3 sample passages</p>
+          <div class="results" id="results">
+            <article class="result-card">
+              <div class="result-meta"><strong>[1] climate_notes.pdf · page 4</strong><span>Sample match</span></div>
+              <p>Coral bleaching happens when heat stress causes corals to expel the algae living in their tissues. Without these algae, corals lose much of their color and their main energy source.</p>
+            </article>
+            <article class="result-card">
+              <div class="result-meta"><strong>[2] climate_notes.pdf · page 5</strong><span>Sample match</span></div>
+              <p>Marine heatwaves can keep water temperatures above the usual summer maximum for weeks. The longer the heat stress lasts, the harder it is for a reef to recover.</p>
+            </article>
+            <article class="result-card">
+              <div class="result-meta"><strong>[3] climate_notes.pdf · page 6</strong><span>Sample match</span></div>
+              <p>Bleached coral is not necessarily dead. If conditions improve, corals may regain their algae, although repeated bleaching leaves reefs more vulnerable.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="features" aria-label="DocuMind features">
+          <article class="feature panel"><span class="feature-number">01</span><h2>Search your own library</h2><p>Upload PDFs, images, Markdown, or text to your private local app and search for relevant passages.</p></article>
+          <article class="feature panel"><span class="feature-number">02</span><h2>Read scanned pages</h2><p>Local OCR can extract text from scanned PDFs and images. Choose PDF pages and copy the extracted text.</p></article>
+          <article class="feature panel"><span class="feature-number">03</span><h2>Trace every passage</h2><p>Search results include the source filename and page so you can return to the original document.</p></article>
+        </section>
+        <p class="privacy-note">This GitHub Pages preview uses built-in sample text only. Your documents stay in your local DocuMind library.</p>
+      </main>
+      <footer><span>DocuMind</span><span>Made for the things you keep.</span></footer>
+    </div>
+  </body>
+</html>

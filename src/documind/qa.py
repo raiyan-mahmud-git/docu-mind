@@ -17,7 +17,12 @@ class QAService:
         self.retriever = retriever
         self.provider = provider
 
-    def ask(self, query: str, top_k: int = 5, use_llm: bool = False) -> Answer:
+    def ask(
+        self,
+        query: str,
+        top_k: int = 5,
+        use_llm: bool = False,
+    ) -> Answer:
         """Answer from retrieved passages, refusing when retrieval finds no evidence."""
         sources = self.retriever.search(query, top_k)
         if not sources:

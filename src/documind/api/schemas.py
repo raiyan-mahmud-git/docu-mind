@@ -13,6 +13,20 @@ class HealthResponse(BaseModel):
     status: str = "ok"
 
 
+class ExtractedPageResponse(BaseModel):
+    """Text extracted from one requested PDF page."""
+
+    page_number: int
+    text: str
+
+
+class PDFTextExtractionResponse(BaseModel):
+    """Selected page text and the source PDF's total page count."""
+
+    total_pages: int
+    pages: list[ExtractedPageResponse]
+
+
 class DocumentResponse(BaseModel):
     """Public fields for an indexed document."""
 

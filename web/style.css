@@ -16,6 +16,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; min-width: 320px; background: var(--page); color: var(--ink); }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
@@ -29,8 +30,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 .brand-mark svg { width: 23px; height: 23px; }
 .brand-name { font-size: 17px; font-weight: 680; letter-spacing: -.04em; }
 .local-badge { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+.topbar-right { display: flex; align-items: center; gap: 14px; }
+#session-username { color: var(--muted); font-size: 11px; }
 .status-dot { width: 7px; height: 7px; background: #82a46c; border-radius: 50%; box-shadow: 0 0 0 3px rgb(130 164 108 / 14%); }
 main { padding: 46px 0 0; }
+.auth-hint { color: var(--muted); font-size: 10px; }
 .intro { max-width: 610px; margin: 0 auto 42px; text-align: center; }
 .eyebrow, .step-label { color: var(--green); font-size: 10px; font-weight: 750; letter-spacing: .13em; }
 .eyebrow { margin: 0 0 15px; text-transform: uppercase; }
@@ -59,6 +63,19 @@ h2 { margin: 0; font-size: 20px; line-height: 1.2; letter-spacing: -.035em; font
 .progress-track { width: 100%; height: 5px; overflow: hidden; border-radius: 10px; background: var(--surface-soft); }
 .progress-fill { width: 0; height: 100%; border-radius: inherit; background: var(--green); transition: width .16s ease-out; }
 .inline-error { margin: 12px 0 0; color: var(--error); font-size: 12px; }
+.ocr-copy-card { margin-top: 24px; }
+.ocr-copy-description { margin: 13px 0 18px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.pdf-copy-form { display: grid; gap: 9px; }
+.pdf-choice-label { margin-top: 3px; color: var(--muted); font-size: 11px; font-weight: 600; }
+.pdf-copy-form input[type="file"], .pdf-copy-form input[type="text"] { width: 100%; min-width: 0; min-height: 42px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--page); color: var(--ink); font: inherit; font-size: 12px; }
+.pdf-copy-form input[type="file"] { padding: 8px; }
+.pdf-copy-form .primary-button { min-height: 43px; justify-self: start; margin-top: 5px; }
+.ocr-copy-results { display: grid; gap: 12px; }
+.ocr-page-card { padding: 14px; border: 1px solid var(--line); border-radius: 11px; background: var(--page); }
+.ocr-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.ocr-page-heading strong { color: var(--green); font-size: 12px; }
+.ocr-page-text { display: block; width: 100%; min-height: 180px; resize: vertical; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; line-height: 1.6; }
+.quiet-button:disabled { opacity: .6; }
 .library-section { margin: 39px 0 43px; }
 .library-heading { margin-bottom: 13px; }
 .library-heading h2 { display: flex; align-items: center; gap: 10px; }

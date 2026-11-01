@@ -23,10 +23,12 @@
           </span>
           <span class="brand-name">DocuMind</span>
         </a>
-        <div class="local-badge"><span class="status-dot"></span> Your library stays local</div>
+        <div class="topbar-right">
+          <div class="local-badge"><span class="status-dot"></span> Your private local library</div>
+        </div>
       </header>
 
-      <main>
+      <main id="app-main">
         <section class="intro" aria-labelledby="page-title">
           <p class="eyebrow">A quieter way to find things</p>
           <h1 id="page-title">Your documents,<br><span>within reach.</span></h1>
@@ -39,9 +41,9 @@
               <p class="step-label">01 <span>·</span> ADD TO YOUR LIBRARY</p>
               <h2 id="upload-title">Start with a document</h2>
             </div>
-            <span class="format-note">PDF, Markdown, or TXT <span>·</span> local size limit applies</span>
+            <span class="format-note">PDF, images, Markdown, or TXT <span>·</span> local size limit applies</span>
           </div>
-          <input id="file-input" type="file" accept=".pdf,.md,.txt,text/plain,text/markdown,application/pdf" multiple hidden>
+          <input id="file-input" type="file" accept=".pdf,.png,.jpg,.jpeg,.bmp,.tif,.tiff,.md,.txt,text/plain,text/markdown,application/pdf,image/png,image/jpeg,image/bmp,image/tiff" multiple hidden>
           <button id="drop-zone" class="drop-zone" type="button" aria-label="Choose documents or drop files here">
             <span class="upload-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4.5 15.5v3A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5v-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -54,6 +56,26 @@
             <div class="progress-track"><div id="upload-progress" class="progress-fill"></div></div>
           </div>
           <p id="upload-error" class="inline-error" role="alert" hidden></p>
+        </section>
+
+        <section class="ocr-copy-card panel" aria-labelledby="ocr-copy-title">
+          <div class="section-heading">
+            <div>
+              <p class="step-label">PAGE TOOL <span>·</span> LOCAL OCR</p>
+              <h2 id="ocr-copy-title">Extract and copy PDF text</h2>
+            </div>
+          </div>
+          <p class="ocr-copy-description">Choose a PDF and the pages you need. Scanned pages are read on this computer; the file is not added to your library.</p>
+          <form id="pdf-copy-form" class="pdf-copy-form">
+            <label class="pdf-choice-label" for="copy-pdf-input">PDF file</label>
+            <input id="copy-pdf-input" type="file" accept=".pdf,application/pdf" required>
+            <label class="pdf-choice-label" for="copy-pages-input">Pages</label>
+            <input id="copy-pages-input" type="text" placeholder="For example: 1, 3-5" autocomplete="off" required>
+            <small class="auth-hint">Enter page numbers or ranges separated by commas. Up to 20 pages per request.</small>
+            <button id="copy-text-button" class="primary-button" type="submit">Extract text</button>
+          </form>
+          <p id="copy-text-status" class="search-status" role="status" aria-live="polite"></p>
+          <div id="copy-text-results" class="ocr-copy-results"></div>
         </section>
 
         <section class="library-section" aria-labelledby="library-title">

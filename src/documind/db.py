@@ -25,18 +25,48 @@ class DocumentRegistry:
 
     def _initialize(self) -> None:
         with self._connect() as connection:
+            existing = connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'documents'"
+            ).fetchone()
+            if existing is None:
+                self._create_documents_table(connection)
+            else:
+                columns = {
+                    str(row["name"])
+                    for row in connection.execute("PRAGMA table_info(documents)").fetchall()
+                }
+                if "user_id" in columns:
+                    # Preserve every document row while removing account ownership.
+                    connection.execute("ALTER TABLE documents RENAME TO documents_accounts")
+                    self._create_documents_table(connection)
+                    connection.execute(
+                        """
+                        INSERT INTO documents (id, filename, sha256, pages, chunk_count, created_at)
+                        SELECT id, filename, sha256, pages, chunk_count, created_at
+                        FROM documents_accounts
+                        """
+                    )
+                    connection.execute("DROP TABLE documents_accounts")
+            connection.execute("DROP TABLE IF EXISTS users")
             connection.execute(
-                """
-                CREATE TABLE IF NOT EXISTS documents (
-                    id TEXT PRIMARY KEY,
-                    filename TEXT NOT NULL,
-                    sha256 TEXT NOT NULL UNIQUE,
-                    pages INTEGER NOT NULL,
-                    chunk_count INTEGER NOT NULL,
-                    created_at TEXT NOT NULL
-                )
-                """
+                "CREATE INDEX IF NOT EXISTS idx_documents_created "
+                "ON documents(created_at DESC)"
             )
+
+    @staticmethod
+    def _create_documents_table(connection: sqlite3.Connection) -> None:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS documents (
+                id TEXT PRIMARY KEY,
+                filename TEXT NOT NULL,
+                sha256 TEXT NOT NULL,
+                pages INTEGER NOT NULL,
+                chunk_count INTEGER NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
 
     @staticmethod
     def _from_row(row: sqlite3.Row) -> Document:
@@ -50,7 +80,12 @@ class DocumentRegistry:
         )
 
     def register(
-        self, doc_id: str, filename: str, sha256: str, pages: int, chunk_count: int
+        self,
+        doc_id: str,
+        filename: str,
+        sha256: str,
+        pages: int,
+        chunk_count: int,
     ) -> Document:
         """Insert or refresh a document row, preserving its original creation time."""
         if pages < 0 or chunk_count < 0:
@@ -59,7 +94,9 @@ class DocumentRegistry:
         with self._connect() as connection:
             connection.execute(
                 """
-                INSERT INTO documents (id, filename, sha256, pages, chunk_count, created_at)
+                INSERT INTO documents (
+                    id, filename, sha256, pages, chunk_count, created_at
+                )
                 VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     filename = excluded.filename,
@@ -87,6 +124,15 @@ class DocumentRegistry:
                 "SELECT * FROM documents ORDER BY created_at DESC, filename ASC"
             ).fetchall()
         return [self._from_row(row) for row in rows]
+
+    def find_by_hash(self, sha256: str) -> Document | None:
+        """Find a duplicate by its SHA-256 content hash."""
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM documents WHERE sha256 = ? ORDER BY created_at LIMIT 1",
+                (sha256,),
+            ).fetchone()
+        return self._from_row(row) if row is not None else None
 
     def delete(self, doc_id: str) -> bool:
         """Delete a document record and report whether it existed."""

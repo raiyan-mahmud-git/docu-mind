@@ -4,31 +4,38 @@
 
 from __future__ import annotations
 
+from functools import partial
+
 # FastAPI dependency markers intentionally use callable defaults (B008).
 # ruff: noqa: B008
 from pathlib import Path, PureWindowsPath
 from typing import cast
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from starlette.concurrency import run_in_threadpool
 
 from documind.api.schemas import (
     AnswerResponse,
     AskRequest,
     DocumentResponse,
+    ExtractedPageResponse,
     HealthResponse,
     PassageResponse,
+    PDFTextExtractionResponse,
     SearchRequest,
     SearchResponse,
 )
 from documind.config import Settings
 from documind.ingest import delete_document
+from documind.loaders.pdf import extract_pdf_pages
 from documind.models import Document
 from documind.runtime import Runtime
 
 router = APIRouter()
-_ALLOWED_SUFFIXES = {".pdf", ".md", ".txt"}
+_ALLOWED_SUFFIXES = {
+    ".pdf", ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".md", ".txt"
+}
 
 
 def get_runtime(request: Request) -> Runtime:
@@ -57,7 +64,7 @@ async def upload_document(
     runtime: Runtime = Depends(get_runtime),
     settings: Settings = Depends(get_settings),
 ) -> DocumentResponse:
-    """Upload and index a PDF, Markdown, or text file."""
+    """Upload and index a supported document or OCR-readable image."""
     raw_name = file.filename or ""
     filename = Path(PureWindowsPath(raw_name).name).name
     if not filename:
@@ -66,7 +73,10 @@ async def upload_document(
     if suffix not in _ALLOWED_SUFFIXES:
         raise HTTPException(
             status_code=400,
-            detail="Unsupported file type; upload a PDF, Markdown, or text file",
+            detail=(
+                "Unsupported file type; upload a PDF, PNG, JPG, JPEG, BMP, TIFF, "
+                "Markdown, or text file"
+            ),
         )
 
     max_bytes = settings.max_upload_mb * 1024 * 1024
@@ -98,8 +108,63 @@ async def upload_document(
         await file.close()
 
 
+@router.post("/extract-text", response_model=PDFTextExtractionResponse)
+async def extract_selected_pdf_text(
+    file: UploadFile = File(...),
+    pages: str = Form(...),
+    settings: Settings = Depends(get_settings),
+) -> PDFTextExtractionResponse:
+    """Return selectable text or local OCR text from chosen PDF pages."""
+    raw_name = file.filename or ""
+    filename = Path(PureWindowsPath(raw_name).name).name
+    if Path(filename).suffix.lower() != ".pdf":
+        raise HTTPException(status_code=400, detail="Choose a PDF file")
+
+    max_bytes = settings.max_upload_mb * 1024 * 1024
+    contents = await file.read(max_bytes + 1)
+    if len(contents) > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds the {settings.max_upload_mb} MB upload limit",
+        )
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded PDF is empty")
+
+    settings.upload_dir.mkdir(parents=True, exist_ok=True)
+    temporary_path = settings.upload_dir / f"{uuid4().hex}.pdf"
+    try:
+        temporary_path.write_bytes(contents)
+        total_pages, extracted_pages = await run_in_threadpool(
+            partial(
+                extract_pdf_pages,
+                temporary_path,
+                pages,
+                ocr_enabled=settings.ocr_enabled,
+                ocr_language=settings.ocr_language,
+                ocr_tessdata=settings.ocr_tessdata,
+                max_pages=20,
+            )
+        )
+        return PDFTextExtractionResponse(
+            total_pages=total_pages,
+            pages=[
+                ExtractedPageResponse(page_number=page.page_number, text=page.text)
+                for page in extracted_pages
+            ],
+        )
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    finally:
+        temporary_path.unlink(missing_ok=True)
+        await file.close()
+
+
 @router.get("/documents", response_model=list[DocumentResponse])
-def list_documents(runtime: Runtime = Depends(get_runtime)) -> list[DocumentResponse]:
+def list_documents(
+    runtime: Runtime = Depends(get_runtime),
+) -> list[DocumentResponse]:
     """Return indexed documents newest first."""
     return [
         DocumentResponse.from_document(document)
@@ -108,7 +173,10 @@ def list_documents(runtime: Runtime = Depends(get_runtime)) -> list[DocumentResp
 
 
 @router.delete("/documents/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_document(doc_id: str, runtime: Runtime = Depends(get_runtime)) -> None:
+def remove_document(
+    doc_id: str,
+    runtime: Runtime = Depends(get_runtime),
+) -> None:
     """Remove one document and all its stored passage vectors."""
     if not delete_document(doc_id, runtime.registry, runtime.vector_store):
         raise HTTPException(status_code=404, detail="Document not found")

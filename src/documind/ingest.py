@@ -11,7 +11,7 @@ from typing import Protocol
 from documind.chunking import chunk_pages
 from documind.db import DocumentRegistry
 from documind.embeddings import SentenceTransformerEmbedder
-from documind.loaders import load_markdown, load_pdf, load_text
+from documind.loaders import load_image, load_markdown, load_pdf, load_text
 from documind.models import Document, Page
 from documind.vectorstore.base import VectorStore
 
@@ -67,16 +67,27 @@ class IngestionPipeline:
                 ocr_language=self.ocr_language,
                 ocr_tessdata=self.ocr_tessdata,
             )
+        if suffix in {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}:
+            return load_image(
+                path,
+                ocr_enabled=self.ocr_enabled,
+                ocr_language=self.ocr_language,
+                ocr_tessdata=self.ocr_tessdata,
+            )
         if suffix == ".md":
             return load_markdown(path)
         if suffix == ".txt":
             return load_text(path)
         raise ValueError(
             f"Unsupported file type {suffix or '(no extension)'!r}; "
-            "use PDF, MD, or TXT"
+            "use PDF, PNG, JPG, JPEG, BMP, TIFF, MD, or TXT"
         )
 
-    def ingest_file(self, path: str | Path, filename: str | None = None) -> Document:
+    def ingest_file(
+        self,
+        path: str | Path,
+        filename: str | None = None,
+    ) -> Document:
         """Index one file and deduplicate it by SHA-256 content hash."""
         source = Path(path)
         if not source.is_file():
@@ -84,16 +95,18 @@ class IngestionPipeline:
 
         document_filename = filename or source.name
         started = time.monotonic()
-        doc_hash = self._sha256(source)
-        existing = self.registry.get(doc_hash)
+        content_hash = self._sha256(source)
+        existing = self.registry.find_by_hash(content_hash)
         if existing is not None:
-            logger.info("Skipping already indexed file %s (sha256=%s)", source.name, doc_hash)
+            logger.info(
+                "Skipping already indexed file %s (sha256=%s)", source.name, content_hash
+            )
             return existing
-
         pages = self._load(source)
+        doc_id = content_hash
         chunks = chunk_pages(
             pages,
-            doc_hash=doc_hash,
+            doc_hash=doc_id,
             filename=document_filename,
             chunk_size=self.chunk_size,
             overlap=self.chunk_overlap,
@@ -101,9 +114,9 @@ class IngestionPipeline:
         vectors = self.embedder.embed_texts([chunk.text for chunk in chunks])
         self.vector_store.add(chunks, vectors)
         document = self.registry.register(
-            doc_id=doc_hash,
+            doc_id=doc_id,
             filename=document_filename,
-            sha256=doc_hash,
+            sha256=content_hash,
             pages=len(pages),
             chunk_count=len(chunks),
         )
@@ -118,8 +131,15 @@ class IngestionPipeline:
         return document
 
 
-def delete_document(doc_id: str, registry: DocumentRegistry, vector_store: VectorStore) -> bool:
+def delete_document(
+    doc_id: str,
+    registry: DocumentRegistry,
+    vector_store: VectorStore,
+) -> bool:
     """Remove a document's stored chunks and metadata row."""
+    document = registry.get(doc_id)
+    if document is None:
+        return False
     vector_store.delete_by_doc(doc_id)
     return registry.delete(doc_id)
 
