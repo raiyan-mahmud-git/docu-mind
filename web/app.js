@@ -112,7 +112,7 @@ function uploadFile(file) {
       try {
         payload = JSON.parse(request.responseText);
       } catch {
-        // A missing JSON body is reported below with the HTTP status.
+        // missing JSON
       }
       if (request.status >= 200 && request.status < 300) {
         resolve(payload);

@@ -1,6 +1,6 @@
 """HTTP endpoints for document management and retrieval."""
 
-# FastAPI requires Depends/File markers as defaults for its dependency injection.
+
 
 from __future__ import annotations
 
